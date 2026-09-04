@@ -1,29 +1,53 @@
 🎵 Slowed + Reverb Studio
 
-A browser-based audio studio for creating aesthetic slowed + reverb and lo-fi versions of your music.
+A browser-based audio studio for creating aesthetic slowed + reverb and lo-fi versions of music.
 
-🌐 Live Demo: https://slowreverb.netlify.app
+🔗 Links
+
+🌐 Live Demo:
+https://slowreverb.netlify.app
+
+💻 Source Code:
+https://github.com/PurohitBhagyesh/SlowReverb
+
+📦 Use the App:
+https://slowreverb.netlify.app
+
+⸻
 
 ✨ Features
 
-* 🎵 Import audio directly from your device
-* 🐌 Adjustable slowdown and pitch
+* 🐌 Slow down audio
+* 🎚️ Pitch manipulation
 * 🌊 Stereo algorithmic reverb
-* 🎚️ Wet/Dry reverb control
-* 🏛️ Adjustable decay / room size
 * ⏱️ Pre-delay control
-* 📻 Low-pass tone shaping
+* 🏛️ Decay / room-size control
+* 📻 Low-pass filter
 * 🔊 808 bass boost
-* 🎧 Real-time audio preview
-* 📊 Live audio spectrum visualization
-* 🔮 One-click aesthetic presets
-* ✏️ Custom output filename
-* 💾 Lossless WAV export
-* 🔒 Client-side audio processing
+* 🎧 Real-time preview
+* 📊 Audio spectrum visualization
+* 🔮 Aesthetic presets
+* 💾 16-bit Stereo PCM WAV export
+* 🔒 100% client-side processing
+
+🎵 Supported Audio
+
+Input
+
+* MP3
+* WAV
+* FLAC
+* M4A
+* OGG
+* AAC
+
+Output
+
+WAV — 16-bit Stereo PCM
+
+The processed audio can be downloaded directly as a WAV file.
 
 🔮 Presets
-
-The app includes ready-to-use presets such as:
 
 * 🌙 Classic Slowed
 * 🏎️ Midnight Drive
@@ -32,61 +56,45 @@ The app includes ready-to-use presets such as:
 * ☕ Lo-Fi Chill
 * 📼 Chopped & Screwed
 
-Each preset combines different speed, pitch, reverb, and tone settings to create a different atmosphere.
+🎛️ Audio Processing
 
-🎛️ Audio Controls
+The app provides controls for:
 
-Slowdown & Pitch
-
-Adjust playback speed and pitch to create deeper, slower audio.
-
-Reverb
-
-Control:
-
-* Wet / Dry Mix
-* Decay / Room Size
-* Pre-Delay
-
-Tone & Bass
-
-Shape the sound with:
-
+* Speed / pitch
+* Wet / dry reverb
+* Decay / room size
+* Pre-delay
 * Low-pass filtering
 * 808 bass boost
 
-🎧 Live Preview
-
-The application provides real-time DSP preview and audio visualization so you can hear the processed result before exporting.
-
-💾 Lossless WAV Export
-
-Processed audio can be exported as:
-
-16-bit Stereo PCM WAV
-
-WAV uses uncompressed PCM audio, making it suitable when you want to avoid additional lossy compression during export.
-
-Note: Lossless WAV export preserves the quality of the processed output; it cannot restore information that was already lost in a lossy source such as MP3.
-
 🔒 Privacy
 
-Audio processing is designed to happen directly in the browser.
+Audio processing happens directly in the browser. Your audio does not need to be uploaded to a server for processing.
 
-Your selected audio is processed locally rather than requiring a traditional server-side upload.
+📸 Preview
 
-🌐 Live Demo
+Add your screenshot here.
+
+🛠️ Built With
+
+* HTML
+* CSS
+* JavaScript
+* Web Audio / DSP technologies
+* Netlify
+
+🚀 Try It
+
+No installation required.
+
+Open the app in your browser:
 
 👉 https://slowreverb.netlify.app
 
-🛠️ Project
-
-Built as a web-based audio processing project with browser audio technologies and DSP processing.
+Upload your audio, adjust the effects, preview the result, and export the processed audio as WAV.
 
 👨‍💻 Developer
 
 Bhagyesh Purohit
 
-⸻
-
-⭐ If you like the project, consider giving the repository a star.
+Built as a web audio and DSP project.
