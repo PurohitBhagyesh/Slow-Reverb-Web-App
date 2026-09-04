@@ -1,4 +1,4 @@
-🎵 Slowed + Reverb Studio
+<h1>🎵 Slow & Reverb Studio</h1>
 
 A browser-based audio studio for creating aesthetic slowed + reverb and lo-fi versions of music.
 
