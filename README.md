@@ -66,9 +66,9 @@ The app provides controls for:
 
 Audio processing happens directly in the browser. Your audio does not need to be uploaded to a server for processing.
 
-📸 Preview
+## 📸 Preview
 
-Add your screenshot here.
+![Slow & Reverb Studio](preview.png)
 
 🛠️ Built With
 
