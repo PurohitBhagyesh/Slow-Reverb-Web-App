@@ -2,17 +2,11 @@
 
 A browser-based audio studio for creating aesthetic slowed + reverb and lo-fi versions of music.
 
-🔗 Links
+## 🔗 Links
 
-🌐 Live Demo:
-https://slowreverb.netlify.app
+[🌐 **Open Live App**](https://slowreverb.netlify.app)
 
-💻 Source Code:
-https://github.com/PurohitBhagyesh/SlowReverb
-
-📦 Use the App:
-https://slowreverb.netlify.app
-
+[📥 **Download Source Code**](https://github.com/PurohitBhagyesh/SlowReverb/archive/refs/heads/main.zip)
 ⸻
 
 ✨ Features
