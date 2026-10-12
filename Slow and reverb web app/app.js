@@ -1,166 +1,348 @@
 /**
- * Slowed + Reverb Studio - Web Audio DSP & Application Logic
+ * Slowed + Reverb Studio
+ * Client-side Web Audio DSP, Visualizer, Presets, and Lossless 16-bit WAV Export
  */
 
-document.addEventListener('DOMContentLoaded', () => {
-    // --- DOM ELEMENTS ---
-    const themeToggle = document.getElementById('themeToggle');
-    const dropZone = document.getElementById('dropZone');
-    const fileInput = document.getElementById('fileInput');
-    const uploadPrompt = document.getElementById('uploadPrompt');
-    const fileDetails = document.getElementById('fileDetails');
-    const fileCoverWrap = document.getElementById('fileCoverWrap');
-    const fileNameDisplay = document.getElementById('fileNameDisplay');
-    const fileMetaDisplay = document.getElementById('fileMetaDisplay');
-    const fileOriginalDuration = document.getElementById('fileOriginalDuration');
-    const btnChangeFile = document.getElementById('btnChangeFile');
-    
-    const studioSection = document.getElementById('studioSection');
-    const statusBadge = document.getElementById('statusBadge');
-    const presetsGrid = document.getElementById('presetsGrid');
-    
-    // Control Elements
-    const speedSlider = document.getElementById('speedSlider');
-    const speedVal = document.getElementById('speedVal');
-    const pitchSemitones = document.getElementById('pitchSemitones');
-    const btnSpeedDown = document.getElementById('btnSpeedDown');
-    const btnSpeedReset = document.getElementById('btnSpeedReset');
-    const btnSpeedUp = document.getElementById('btnSpeedUp');
-    
-    const reverbMixSlider = document.getElementById('reverbMixSlider');
-    const reverbMixVal = document.getElementById('reverbMixVal');
-    const reverbDecaySlider = document.getElementById('reverbDecaySlider');
-    const reverbDecayVal = document.getElementById('reverbDecayVal');
-    const reverbPreDelaySlider = document.getElementById('reverbPreDelaySlider');
-    const reverbPreDelayVal = document.getElementById('reverbPreDelayVal');
-    
-    const toneSlider = document.getElementById('toneSlider');
-    const toneVal = document.getElementById('toneVal');
-    const bassSlider = document.getElementById('bassSlider');
-    const bassVal = document.getElementById('bassVal');
-    
-    // Visualizer & Player Controls
-    const visModeSelect = document.getElementById('visModeSelect');
-    const visualizerCanvas = document.getElementById('visualizerCanvas');
-    const canvasCtx = visualizerCanvas.getContext('2d');
-    const progressBar = document.getElementById('progressBar');
-    const progressFill = document.getElementById('progressFill');
-    const currentTimeDisplay = document.getElementById('currentTimeDisplay');
-    const totalTimeDisplay = document.getElementById('totalTimeDisplay');
-    const btnPlayPause = document.getElementById('btnPlayPause');
-    const playIcon = document.getElementById('playIcon');
-    const pauseIcon = document.getElementById('pauseIcon');
-    const btnStop = document.getElementById('btnStop');
-    
-    // Export Controls
-    const outputNameInput = document.getElementById('outputNameInput');
-    const suffixBtns = document.querySelectorAll('.suffix-btn');
-    const btnConvert = document.getElementById('btnConvert');
-    const convertProgressBar = document.getElementById('convertProgressBar');
-    const convertStatusText = document.getElementById('convertStatusText');
-    const convertProgressFill = document.getElementById('convertProgressFill');
-    const exportReadyCard = document.getElementById('exportReadyCard');
-    const exportMetaInfo = document.getElementById('exportMetaInfo');
-    const btnDownload = document.getElementById('btnDownload');
-    const btnPlayConverted = document.getElementById('btnPlayConverted');
-    const playConvertedIcon = document.getElementById('playConvertedIcon');
-    const playConvertedText = document.getElementById('playConvertedText');
+(() => {
+    'use strict';
 
-    // --- STATE VARIABLES ---
-    let audioCtx = null;
-    let audioBuffer = null;
-    let sourceNode = null;
-    let dryGainNode = null;
-    let wetGainNode = null;
-    let delayNode = null;
-    let convolverNode = null;
-    let toneFilter = null;
-    let bassFilter = null;
-    let analyserNode = null;
-
-    let isPlaying = false;
-    let startTime = 0;
-    let pauseOffset = 0;
-    let animationFrameId = null;
-    let rawFileName = 'track';
-    
-    let convertedAudioBuffer = null;
-    let convertedAudioUrl = null;
-    let convertedSourceNode = null;
-    let isPlayingConverted = false;
-
-    // Preset definitions
+    // Preset Configurations
     const PRESETS = {
-        classic: { speed: 0.85, mix: 0.40, decay: 3.5, predelay: 30, tone: 16000, bass: 3.0 },
-        nightdrive: { speed: 0.80, mix: 0.55, decay: 5.0, predelay: 45, tone: 12000, bass: 6.0 },
-        astral: { speed: 0.75, mix: 0.70, decay: 7.0, predelay: 60, tone: 14000, bass: 2.0 },
-        bedroom: { speed: 0.84, mix: 0.35, decay: 3.0, predelay: 20, tone: 4500, bass: 4.5 },
-        lofi: { speed: 0.92, mix: 0.25, decay: 2.5, predelay: 15, tone: 9000, bass: 2.5 },
-        chopped: { speed: 0.70, mix: 0.45, decay: 4.0, predelay: 35, tone: 11000, bass: 8.0 }
+        classic: {
+            speed: 0.85,
+            reverbMix: 0.40,
+            reverbDecay: 3.5,
+            reverbPreDelay: 30,
+            tone: 16000,
+            bass: 3.0
+        },
+        nightdrive: {
+            speed: 0.80,
+            reverbMix: 0.45,
+            reverbDecay: 4.2,
+            reverbPreDelay: 40,
+            tone: 14000,
+            bass: 6.0
+        },
+        astral: {
+            speed: 0.75,
+            reverbMix: 0.60,
+            reverbDecay: 6.0,
+            reverbPreDelay: 60,
+            tone: 15000,
+            bass: 2.0
+        },
+        bedroom: {
+            speed: 0.84,
+            reverbMix: 0.35,
+            reverbDecay: 2.5,
+            reverbPreDelay: 20,
+            tone: 5500,
+            bass: 3.5
+        },
+        lofi: {
+            speed: 0.92,
+            reverbMix: 0.25,
+            reverbDecay: 2.0,
+            reverbPreDelay: 15,
+            tone: 8500,
+            bass: 2.0
+        },
+        chopped: {
+            speed: 0.70,
+            reverbMix: 0.30,
+            reverbDecay: 2.8,
+            reverbPreDelay: 25,
+            tone: 12000,
+            bass: 8.0
+        }
     };
 
-    // --- THEME INITIALIZATION ---
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    if (savedTheme === 'light') {
-        document.body.classList.remove('theme-dark');
-        document.body.classList.add('theme-light');
-        themeToggle.querySelector('.theme-toggle-icon').textContent = '☀️';
+    // State Management
+    const state = {
+        audioContext: null,
+        originalAudioBuffer: null,
+        originalFileName: '',
+        originalFileBaseName: '',
+        originalFileSizeStr: '',
+        
+        // Active DSP params
+        speed: 0.85,
+        reverbMix: 0.40,
+        reverbDecay: 3.5,
+        reverbPreDelay: 30,
+        tone: 16000,
+        bass: 3.0,
+        
+        // Impulse response buffer cache
+        impulseBuffer: null,
+        
+        // Live Playback Graph
+        sourceNode: null,
+        bassNode: null,
+        toneNode: null,
+        preDelayNode: null,
+        convolverNode: null,
+        dryGainNode: null,
+        wetGainNode: null,
+        analyserNode: null,
+        
+        isPlaying: false,
+        playbackStartTime: 0,
+        pausedAtTime: 0,
+        rafId: null,
+        
+        // Exported result
+        convertedBlobUrl: null,
+        convertedAudio: null,
+        isConvertedPlaying: false
+    };
+
+    // DOM Elements
+    const el = {
+        themeToggle: document.getElementById('themeToggle'),
+        themeIcon: document.querySelector('.theme-toggle-icon'),
+        dropZone: document.getElementById('dropZone'),
+        fileInput: document.getElementById('fileInput'),
+        uploadPrompt: document.getElementById('uploadPrompt'),
+        fileDetails: document.getElementById('fileDetails'),
+        fileCoverWrap: document.getElementById('fileCoverWrap'),
+        fileNameDisplay: document.getElementById('fileNameDisplay'),
+        fileMetaDisplay: document.getElementById('fileMetaDisplay'),
+        fileOriginalDuration: document.getElementById('fileOriginalDuration'),
+        btnChangeFile: document.getElementById('btnChangeFile'),
+        
+        studioSection: document.getElementById('studioSection'),
+        presetsGrid: document.getElementById('presetsGrid'),
+        presetCards: document.querySelectorAll('.preset-card'),
+        statusBadge: document.getElementById('statusBadge'),
+        
+        pitchSemitones: document.getElementById('pitchSemitones'),
+        speedSlider: document.getElementById('speedSlider'),
+        speedVal: document.getElementById('speedVal'),
+        btnSpeedDown: document.getElementById('btnSpeedDown'),
+        btnSpeedReset: document.getElementById('btnSpeedReset'),
+        btnSpeedUp: document.getElementById('btnSpeedUp'),
+        
+        reverbMixSlider: document.getElementById('reverbMixSlider'),
+        reverbMixVal: document.getElementById('reverbMixVal'),
+        reverbDecaySlider: document.getElementById('reverbDecaySlider'),
+        reverbDecayVal: document.getElementById('reverbDecayVal'),
+        reverbPreDelaySlider: document.getElementById('reverbPreDelaySlider'),
+        reverbPreDelayVal: document.getElementById('reverbPreDelayVal'),
+        
+        toneSlider: document.getElementById('toneSlider'),
+        toneVal: document.getElementById('toneVal'),
+        bassSlider: document.getElementById('bassSlider'),
+        bassVal: document.getElementById('bassVal'),
+        
+        visModeSelect: document.getElementById('visModeSelect'),
+        visualizerCanvas: document.getElementById('visualizerCanvas'),
+        progressBar: document.getElementById('progressBar'),
+        progressFill: document.getElementById('progressFill'),
+        currentTimeDisplay: document.getElementById('currentTimeDisplay'),
+        totalTimeDisplay: document.getElementById('totalTimeDisplay'),
+        btnPlayPause: document.getElementById('btnPlayPause'),
+        playIcon: document.getElementById('playIcon'),
+        pauseIcon: document.getElementById('pauseIcon'),
+        btnStop: document.getElementById('btnStop'),
+        
+        outputNameInput: document.getElementById('outputNameInput'),
+        suffixButtons: document.querySelectorAll('.suffix-btn'),
+        btnConvert: document.getElementById('btnConvert'),
+        convertProgressBar: document.getElementById('convertProgressBar'),
+        convertStatusText: document.getElementById('convertStatusText'),
+        convertProgressFill: document.getElementById('convertProgressFill'),
+        exportReadyCard: document.getElementById('exportReadyCard'),
+        exportMetaInfo: document.getElementById('exportMetaInfo'),
+        btnDownload: document.getElementById('btnDownload'),
+        btnPlayConverted: document.getElementById('btnPlayConverted'),
+        playConvertedIcon: document.getElementById('playConvertedIcon'),
+        playConvertedText: document.getElementById('playConvertedText')
+    };
+
+    const canvasCtx = el.visualizerCanvas.getContext('2d');
+
+    // -------------------------------------------------------------------------
+    // Audio Context Helper
+    // -------------------------------------------------------------------------
+    function getAudioContext() {
+        if (!state.audioContext) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            state.audioContext = new AudioContextClass();
+        }
+        if (state.audioContext.state === 'suspended') {
+            state.audioContext.resume();
+        }
+        return state.audioContext;
     }
 
-    themeToggle.addEventListener('click', () => {
-        const isLight = document.body.classList.toggle('theme-light');
-        document.body.classList.toggle('theme-dark', !isLight);
-        themeToggle.querySelector('.theme-toggle-icon').textContent = isLight ? '☀️' : '🌙';
-        localStorage.setItem('theme', isLight ? 'light' : 'dark');
-    });
+    // Format seconds to mm:ss
+    function formatTime(seconds) {
+        if (!isFinite(seconds) || seconds < 0) return '0:00';
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
 
-    // --- FILE UPLOAD HANDLING ---
-    dropZone.addEventListener('click', (e) => {
-        if (e.target.id !== 'btnChangeFile') {
-            fileInput.click();
+    // Format byte size to readable string
+    function formatFileSize(bytes) {
+        if (bytes < 1024 * 1024) {
+            return `${(bytes / 1024).toFixed(1)} KB`;
         }
-    });
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
 
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.style.borderColor = 'var(--accent)';
-    });
+    // -------------------------------------------------------------------------
+    // Algorithmic Stereo Reverb Impulse Generator
+    // -------------------------------------------------------------------------
+    function createReverbImpulse(ctx, decayTime) {
+        const sampleRate = ctx.sampleRate;
+        const length = Math.max(1, Math.floor(sampleRate * decayTime));
+        const impulse = ctx.createBuffer(2, length, sampleRate);
+        const left = impulse.getChannelData(0);
+        const right = impulse.getChannelData(1);
 
-    dropZone.addEventListener('dragleave', () => {
-        dropZone.style.borderColor = '';
-    });
-
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.style.borderColor = '';
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            handleFileSelect(e.dataTransfer.files[0]);
+        for (let i = 0; i < length; i++) {
+            const t = i / sampleRate;
+            // Exponential decay envelope
+            const envelope = Math.exp(-3.5 * (t / decayTime));
+            // Stereo decorrelated white noise with subtle diffusion
+            left[i] = (Math.random() * 2 - 1) * envelope;
+            right[i] = (Math.random() * 2 - 1) * envelope;
         }
-    });
+        return impulse;
+    }
 
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files && e.target.files.length > 0) {
-            handleFileSelect(e.target.files[0]);
+    function getOrBuildImpulse(ctx) {
+        if (!state.impulseBuffer || state.impulseBuffer.decayTime !== state.reverbDecay) {
+            state.impulseBuffer = createReverbImpulse(ctx, state.reverbDecay);
+            state.impulseBuffer.decayTime = state.reverbDecay;
         }
-    });
+        return state.impulseBuffer;
+    }
 
-    btnChangeFile.addEventListener('click', (e) => {
-        e.stopPropagation();
-        fileInput.click();
-    });
+    // -------------------------------------------------------------------------
+    // Theme Toggle
+    // -------------------------------------------------------------------------
+    function initTheme() {
+        const savedTheme = localStorage.getItem('slow_reverb_theme') || 'dark';
+        setTheme(savedTheme);
 
-    function handleFileSelect(file) {
-        if (!file.type.startsWith('audio/') && !file.name.match(/\.(mp3|wav|flac|m4a|aac|ogg)$/i)) {
-            alert('Please select a valid audio file.');
-            return;
+        el.themeToggle.addEventListener('click', () => {
+            const isLight = document.body.classList.contains('theme-light');
+            const newTheme = isLight ? 'dark' : 'light';
+            setTheme(newTheme);
+        });
+    }
+
+    function setTheme(theme) {
+        if (theme === 'light') {
+            document.body.classList.remove('theme-dark');
+            document.body.classList.add('theme-light');
+            el.themeIcon.textContent = '☀️';
+            el.themeToggle.setAttribute('aria-label', 'Switch to dark mode');
+        } else {
+            document.body.classList.remove('theme-light');
+            document.body.classList.add('theme-dark');
+            el.themeIcon.textContent = '🌙';
+            el.themeToggle.setAttribute('aria-label', 'Switch to light mode');
         }
+        localStorage.setItem('slow_reverb_theme', theme);
+    }
 
-        rawFileName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-        outputNameInput.value = `${rawFileName} (Slowed + Reverb)`;
-        fileNameDisplay.textContent = file.name;
-        fileMetaDisplay.textContent = `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+    // -------------------------------------------------------------------------
+    // File Loading and ID3 Tag Extraction
+    // -------------------------------------------------------------------------
+    function initFileUpload() {
+        el.dropZone.addEventListener('click', (e) => {
+            if (e.target.closest('#btnChangeFile')) return;
+            el.fileInput.click();
+        });
 
-        // Try extracting metadata cover art via jsmediatags
+        el.btnChangeFile.addEventListener('click', (e) => {
+            e.stopPropagation();
+            el.fileInput.click();
+        });
+
+        el.fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            el.dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                el.dropZone.classList.add('drag-over');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            el.dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                el.dropZone.classList.remove('drag-over');
+            });
+        });
+
+        el.dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            if (dt && dt.files && dt.files.length > 0) {
+                handleFile(dt.files[0]);
+            }
+        });
+    }
+
+    async function handleFile(file) {
+        stopPlayback();
+        resetExportState();
+
+        state.originalFileName = file.name;
+        state.originalFileBaseName = file.name.replace(/\.[^/.]+$/, '');
+        state.originalFileSizeStr = formatFileSize(file.size);
+
+        el.statusBadge.textContent = 'Decoding...';
+        el.statusBadge.className = 'badge badge-secondary';
+
+        // Parse ID3 Artwork if jsmediatags is present
+        extractCoverArt(file);
+
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const ctx = getAudioContext();
+            const decodedBuffer = await ctx.decodeAudioData(arrayBuffer);
+
+            state.originalAudioBuffer = decodedBuffer;
+            state.pausedAtTime = 0;
+
+            // Update UI Details
+            el.fileNameDisplay.textContent = state.originalFileName;
+            el.fileMetaDisplay.textContent = state.originalFileSizeStr;
+            el.fileOriginalDuration.textContent = `Original: ${formatTime(decodedBuffer.duration)}`;
+            el.outputNameInput.value = `${state.originalFileBaseName} (Slowed + Reverb)`;
+            
+            el.uploadPrompt.classList.add('hidden');
+            el.fileDetails.classList.remove('hidden');
+            el.studioSection.classList.remove('hidden');
+            
+            updateTotalDurationDisplay();
+            updateProgressBar(0);
+
+            el.statusBadge.textContent = 'Ready';
+            el.statusBadge.className = 'badge badge-success';
+        } catch (err) {
+            console.error('Audio decode error:', err);
+            alert('Failed to decode audio file. Please try another audio format (MP3, WAV, FLAC, M4A).');
+            el.statusBadge.textContent = 'Error';
+            el.statusBadge.className = 'badge badge-primary';
+        }
+    }
+
+    function extractCoverArt(file) {
+        el.fileCoverWrap.innerHTML = '<div class="file-icon-lead" id="fileIconLead">🎵</div>';
+        
         if (window.jsmediatags) {
             window.jsmediatags.read(file, {
                 onSuccess: (tag) => {
@@ -170,652 +352,723 @@ document.addEventListener('DOMContentLoaded', () => {
                         for (let i = 0; i < image.data.length; i++) {
                             base64String += String.fromCharCode(image.data[i]);
                         }
-                        const base64 = "data:" + image.format + ";base64," + window.btoa(base64String);
-                        fileCoverWrap.innerHTML = `<img src="${base64}" class="file-cover-img" alt="Cover Art">`;
-                    } else {
-                        fileCoverWrap.innerHTML = '<div class="file-icon-lead">🎵</div>';
+                        const base64 = 'data:' + image.format + ';base64,' + window.btoa(base64String);
+                        el.fileCoverWrap.innerHTML = `<img src="${base64}" alt="Cover" class="file-cover-img">`;
                     }
                 },
                 onError: () => {
-                    fileCoverWrap.innerHTML = '<div class="file-icon-lead">🎵</div>';
+                    // Keep fallback musical icon
                 }
             });
         }
+    }
 
-        // Decode Audio Data
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            initAudioContext();
+    // -------------------------------------------------------------------------
+    // Audio DSP Setup & Graph Connections
+    // -------------------------------------------------------------------------
+    function buildLiveGraph(ctx, startTimeOffset = 0) {
+        if (!state.originalAudioBuffer) return;
+
+        // Disconnect old nodes
+        tearDownLiveGraph();
+
+        // Source node
+        state.sourceNode = ctx.createBufferSource();
+        state.sourceNode.buffer = state.originalAudioBuffer;
+        state.sourceNode.playbackRate.value = state.speed;
+
+        // Bass boost filter (Low-shelf @ 120Hz)
+        state.bassNode = ctx.createBiquadFilter();
+        state.bassNode.type = 'lowshelf';
+        state.bassNode.frequency.value = 120;
+        state.bassNode.gain.value = state.bass;
+
+        // Tone filter (Lowpass @ tone freq)
+        state.toneNode = ctx.createBiquadFilter();
+        state.toneNode.type = 'lowpass';
+        state.toneNode.frequency.value = state.tone;
+        state.toneNode.Q.value = 0.707;
+
+        // Reverb Pre-Delay
+        state.preDelayNode = ctx.createDelay(1.0);
+        state.preDelayNode.delayTime.value = state.reverbPreDelay / 1000;
+
+        // Convolver Reverb
+        state.convolverNode = ctx.createConvolver();
+        state.convolverNode.buffer = getOrBuildImpulse(ctx);
+
+        // Wet / Dry gains
+        state.dryGainNode = ctx.createGain();
+        state.wetGainNode = ctx.createGain();
+        state.dryGainNode.gain.value = 1.0 - state.reverbMix * 0.45;
+        state.wetGainNode.gain.value = state.reverbMix;
+
+        // Analyser for visualizer
+        state.analyserNode = ctx.createAnalyser();
+        state.analyserNode.fftSize = 256;
+        state.analyserNode.smoothingTimeConstant = 0.82;
+
+        // Connections:
+        // Source -> Bass -> Tone
+        state.sourceNode.connect(state.bassNode);
+        state.bassNode.connect(state.toneNode);
+
+        // Tone -> DryGain -> Analyser -> Destination
+        state.toneNode.connect(state.dryGainNode);
+        state.dryGainNode.connect(state.analyserNode);
+
+        // Tone -> PreDelay -> Convolver -> WetGain -> Analyser -> Destination
+        state.toneNode.connect(state.preDelayNode);
+        state.preDelayNode.connect(state.convolverNode);
+        state.convolverNode.connect(state.wetGainNode);
+        state.wetGainNode.connect(state.analyserNode);
+
+        state.analyserNode.connect(ctx.destination);
+
+        state.sourceNode.onended = () => {
+            if (state.isPlaying) {
+                const currentPos = getCurrentPlaybackPosition();
+                const totalDur = getEffectiveDuration();
+                if (currentPos >= totalDur - 0.2) {
+                    stopPlayback();
+                }
+            }
+        };
+
+        // Start playback at given buffer offset
+        state.playbackStartTime = ctx.currentTime - (startTimeOffset / state.speed);
+        state.sourceNode.start(0, startTimeOffset);
+        state.isPlaying = true;
+        updatePlayPauseIcons(true);
+    }
+
+    function tearDownLiveGraph() {
+        if (state.sourceNode) {
             try {
-                statusBadge.textContent = 'Decoding...';
-                statusBadge.className = 'badge badge-secondary';
-                audioBuffer = await audioCtx.decodeAudioData(e.target.result);
-                
-                fileOriginalDuration.textContent = `Original: ${formatTime(audioBuffer.duration)}`;
-                uploadPrompt.classList.add('hidden');
-                fileDetails.classList.remove('hidden');
-                studioSection.classList.remove('hidden');
-                statusBadge.textContent = 'Ready';
-                statusBadge.className = 'badge badge-success';
-                
-                stopAudio();
-                pauseOffset = 0;
-                updateTimeDisplay();
-                resizeCanvas();
-            } catch (err) {
-                console.error('Error decoding audio:', err);
-                alert('Could not decode audio file. Please try another track.');
-                statusBadge.textContent = 'Error';
-                statusBadge.className = 'badge';
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    }
-
-    // --- AUDIO DSP INITIALIZATION ---
-    function initAudioContext() {
-        if (!audioCtx) {
-            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            audioCtx = new AudioCtx();
-        }
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
+                state.sourceNode.onended = null;
+                state.sourceNode.stop();
+                state.sourceNode.disconnect();
+            } catch (e) { /* ignore */ }
+            state.sourceNode = null;
         }
     }
 
-    function buildDSPChain() {
-        if (!audioCtx || !audioBuffer) return;
-
-        sourceNode = audioCtx.createBufferSource();
-        sourceNode.buffer = audioBuffer;
-        sourceNode.playbackRate.value = parseFloat(speedSlider.value);
-
-        bassFilter = audioCtx.createBiquadFilter();
-        bassFilter.type = 'lowshelf';
-        bassFilter.frequency.value = 120;
-        bassFilter.gain.value = parseFloat(bassSlider.value);
-
-        toneFilter = audioCtx.createBiquadFilter();
-        toneFilter.type = 'lowpass';
-        toneFilter.frequency.value = parseFloat(toneSlider.value);
-
-        delayNode = audioCtx.createDelay();
-        delayNode.delayTime.value = parseFloat(reverbPreDelaySlider.value) / 1000;
-
-        convolverNode = audioCtx.createConvolver();
-        convolverNode.buffer = createReverbImpulseResponse(
-            audioCtx,
-            parseFloat(reverbDecaySlider.value),
-            parseFloat(reverbPreDelaySlider.value) / 1000
-        );
-
-        dryGainNode = audioCtx.createGain();
-        wetGainNode = audioCtx.createGain();
-        
-        const mix = parseFloat(reverbMixSlider.value);
-        dryGainNode.gain.value = Math.cos(mix * 0.5 * Math.PI);
-        wetGainNode.gain.value = Math.sin(mix * 0.5 * Math.PI);
-
-        analyserNode = audioCtx.createAnalyser();
-        analyserNode.fftSize = 256;
-
-        // Routing
-        sourceNode.connect(bassFilter);
-        bassFilter.connect(toneFilter);
-
-        // Dry path
-        toneFilter.connect(dryGainNode);
-        dryGainNode.connect(analyserNode);
-
-        // Wet path
-        toneFilter.connect(delayNode);
-        delayNode.connect(convolverNode);
-        convolverNode.connect(wetGainNode);
-        wetGainNode.connect(analyserNode);
-
-        analyserNode.connect(audioCtx.destination);
-
-        sourceNode.onended = () => {
-            if (isPlaying && (getCurrentTime() >= getEffectiveDuration())) {
-                stopAudio();
-            }
-        };
-    }
-
-    // Synthetic impulse response for stereo convolver reverb
-    function createReverbImpulseResponse(ctx, duration, preDelaySec) {
-        const sampleRate = ctx.sampleRate;
-        const length = Math.floor(duration * sampleRate);
-        const impulse = ctx.createBuffer(2, length, sampleRate);
-        const left = impulse.getChannelData(0);
-        const right = impulse.getChannelData(1);
-
-        for (let i = 0; i < length; i++) {
-            const t = i / sampleRate;
-            const decay = Math.exp(-3 * t / duration);
-            left[i] = (Math.random() * 2 - 1) * decay;
-            right[i] = (Math.random() * 2 - 1) * decay;
+    function updateLiveParams() {
+        if (state.sourceNode && state.audioContext) {
+            const currTime = state.audioContext.currentTime;
+            state.sourceNode.playbackRate.setValueAtTime(state.speed, currTime);
         }
-        return impulse;
-    }
-
-    // --- PLAYBACK CONTROLS ---
-    btnPlayPause.addEventListener('click', () => {
-        if (isPlaying) {
-            pauseAudio();
-        } else {
-            playAudio();
+        if (state.bassNode && state.audioContext) {
+            state.bassNode.gain.setValueAtTime(state.bass, state.audioContext.currentTime);
         }
-    });
-
-    btnStop.addEventListener('click', stopAudio);
-
-    function playAudio() {
-        if (!audioBuffer) return;
-        initAudioContext();
-
-        if (isPlayingConverted && convertedSourceNode) {
-            try { convertedSourceNode.stop(); } catch(e){}
-            isPlayingConverted = false;
-            updatePlayConvertedUI();
+        if (state.toneNode && state.audioContext) {
+            state.toneNode.frequency.setValueAtTime(state.tone, state.audioContext.currentTime);
         }
-
-        buildDSPChain();
-        const currentSpeed = parseFloat(speedSlider.value);
-        const originalOffset = pauseOffset;
-        
-        sourceNode.start(0, originalOffset);
-        startTime = audioCtx.currentTime - (originalOffset / currentSpeed);
-        isPlaying = true;
-
-        playIcon.classList.add('hidden');
-        pauseIcon.classList.remove('hidden');
-        drawVisualizer();
-    }
-
-    function pauseAudio() {
-        if (!isPlaying || !sourceNode) return;
-        pauseOffset = getCurrentTime() * parseFloat(speedSlider.value);
-        try {
-            sourceNode.stop();
-        } catch (e) {}
-        isPlaying = false;
-        playIcon.classList.remove('hidden');
-        pauseIcon.classList.add('hidden');
-        if (animationFrameId) cancelAnimationFrame(animationFrameId);
-    }
-
-    function stopAudio() {
-        if (sourceNode) {
-            try { sourceNode.stop(); } catch (e) {}
+        if (state.preDelayNode && state.audioContext) {
+            state.preDelayNode.delayTime.setValueAtTime(state.reverbPreDelay / 1000, state.audioContext.currentTime);
         }
-        isPlaying = false;
-        pauseOffset = 0;
-        playIcon.classList.remove('hidden');
-        pauseIcon.classList.add('hidden');
-        progressFill.style.width = '0%';
-        updateTimeDisplay();
-        if (animationFrameId) cancelAnimationFrame(animationFrameId);
-        clearCanvas();
+        if (state.convolverNode && state.audioContext) {
+            state.convolverNode.buffer = getOrBuildImpulse(state.audioContext);
+        }
+        if (state.dryGainNode && state.wetGainNode && state.audioContext) {
+            const currTime = state.audioContext.currentTime;
+            state.dryGainNode.gain.setValueAtTime(1.0 - state.reverbMix * 0.45, currTime);
+            state.wetGainNode.gain.setValueAtTime(state.reverbMix, currTime);
+        }
     }
 
-    function getCurrentTime() {
-        if (!isPlaying) return pauseOffset / parseFloat(speedSlider.value);
-        const currentSpeed = parseFloat(speedSlider.value);
-        return (audioCtx.currentTime - startTime) * currentSpeed;
-    }
-
+    // -------------------------------------------------------------------------
+    // Playback Transport Controls
+    // -------------------------------------------------------------------------
     function getEffectiveDuration() {
-        return audioBuffer ? audioBuffer.duration : 0;
+        if (!state.originalAudioBuffer) return 0;
+        return state.originalAudioBuffer.duration / state.speed;
     }
 
-    progressBar.addEventListener('click', (e) => {
-        if (!audioBuffer) return;
-        const rect = progressBar.getBoundingClientRect();
-        const pos = (e.clientX - rect.left) / rect.width;
-        const targetTime = pos * getEffectiveDuration();
-        
-        const wasPlaying = isPlaying;
-        if (wasPlaying) pauseAudio();
-        pauseOffset = targetTime;
-        updateTimeDisplay();
-        if (wasPlaying) playAudio();
-    });
+    function getCurrentPlaybackPosition() {
+        if (!state.isPlaying || !state.audioContext) {
+            return state.pausedAtTime;
+        }
+        const elapsed = (state.audioContext.currentTime - state.playbackStartTime) * state.speed;
+        return Math.min(Math.max(0, elapsed), state.originalAudioBuffer.duration);
+    }
 
-    function updateTimeDisplay() {
-        const current = getCurrentTime();
-        const total = getEffectiveDuration();
-        const currentSpeed = parseFloat(speedSlider.value);
-        const adjustedTotal = total / currentSpeed;
-        const adjustedCurrent = current / currentSpeed;
+    function togglePlayPause() {
+        if (!state.originalAudioBuffer) return;
+        const ctx = getAudioContext();
 
-        currentTimeDisplay.textContent = formatTime(adjustedCurrent);
-        totalTimeDisplay.textContent = formatTime(adjustedTotal);
-        
-        if (total > 0) {
-            const percent = Math.min((current / total) * 100, 100);
-            progressFill.style.width = `${percent}%`;
+        if (state.isPlaying) {
+            pausePlayback();
+        } else {
+            playPlayback();
         }
     }
 
-    // --- DSP SLIDER CONTROLS ---
-    speedSlider.addEventListener('input', () => {
-        const speed = parseFloat(speedSlider.value);
-        speedVal.textContent = `${Math.round(speed * 100)}%`;
-        
-        // Calculate pitch semitones: 12 * log2(speed)
-        const semitones = (12 * Math.log2(speed)).toFixed(1);
-        pitchSemitones.textContent = `(${semitones > 0 ? '+' : ''}${semitones} st)`;
-        
-        if (sourceNode && isPlaying) {
-            const currTime = getCurrentTime();
-            sourceNode.playbackRate.setValueAtTime(speed, audioCtx.currentTime);
-            startTime = audioCtx.currentTime - (currTime / speed);
+    function playPlayback() {
+        if (!state.originalAudioBuffer) return;
+        const ctx = getAudioContext();
+
+        if (state.pausedAtTime >= state.originalAudioBuffer.duration) {
+            state.pausedAtTime = 0;
         }
-        updateTimeDisplay();
-    });
-
-    btnSpeedDown.addEventListener('click', () => {
-        let val = Math.max(0.50, parseFloat(speedSlider.value) - 0.01);
-        speedSlider.value = val.toFixed(2);
-        speedSlider.dispatchEvent(new Event('input'));
-    });
-
-    btnSpeedUp.addEventListener('click', () => {
-        let val = Math.min(1.15, parseFloat(speedSlider.value) + 0.01);
-        speedSlider.value = val.toFixed(2);
-        speedSlider.dispatchEvent(new Event('input'));
-    });
-
-    btnSpeedReset.addEventListener('click', () => {
-        speedSlider.value = 0.85;
-        speedSlider.dispatchEvent(new Event('input'));
-    });
-
-    reverbMixSlider.addEventListener('input', () => {
-        const val = parseFloat(reverbMixSlider.value);
-        reverbMixVal.textContent = `${Math.round(val * 100)}%`;
-        if (dryGainNode && wetGainNode) {
-            dryGainNode.gain.value = Math.cos(val * 0.5 * Math.PI);
-            wetGainNode.gain.value = Math.sin(val * 0.5 * Math.PI);
-        }
-    });
-
-    reverbDecaySlider.addEventListener('input', () => {
-        reverbDecayVal.textContent = `${reverbDecaySlider.value}s`;
-        if (convolverNode && audioCtx) {
-            convolverNode.buffer = createReverbImpulseResponse(
-                audioCtx,
-                parseFloat(reverbDecaySlider.value),
-                parseFloat(reverbPreDelaySlider.value) / 1000
-            );
-        }
-    });
-
-    reverbPreDelaySlider.addEventListener('input', () => {
-        reverbPreDelayVal.textContent = `${reverbPreDelaySlider.value}ms`;
-        if (delayNode) {
-            delayNode.delayTime.value = parseFloat(reverbPreDelaySlider.value) / 1000;
-        }
-    });
-
-    toneSlider.addEventListener('input', () => {
-        const val = parseInt(toneSlider.value);
-        let label = `${val}Hz`;
-        if (val < 6000) label = `Muffled (${val}Hz)`;
-        else if (val < 14000) label = `Warm (${val}Hz)`;
-        else label = `Bright (${val}Hz)`;
-        toneVal.textContent = label;
-        if (toneFilter) {
-            toneFilter.frequency.value = val;
-        }
-    });
-
-    bassSlider.addEventListener('input', () => {
-        const val = parseFloat(bassSlider.value);
-        bassVal.textContent = `+${val.toFixed(1)} dB`;
-        if (bassFilter) {
-            bassFilter.gain.value = val;
-        }
-    });
-
-    // --- PRESETS HANDLING ---
-    presetsGrid.addEventListener('click', (e) => {
-        const presetCard = e.target.closest('.preset-card');
-        if (!presetCard) return;
-        
-        document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
-        presetCard.classList.add('active');
-        
-        const key = presetCard.dataset.preset;
-        if (PRESETS[key]) {
-            applyPreset(PRESETS[key]);
-        }
-    });
-
-    function applyPreset(p) {
-        speedSlider.value = p.speed;
-        speedSlider.dispatchEvent(new Event('input'));
-
-        reverbMixSlider.value = p.mix;
-        reverbMixSlider.dispatchEvent(new Event('input'));
-
-        reverbDecaySlider.value = p.decay;
-        reverbDecaySlider.dispatchEvent(new Event('input'));
-
-        reverbPreDelaySlider.value = p.predelay;
-        reverbPreDelaySlider.dispatchEvent(new Event('input'));
-
-        toneSlider.value = p.tone;
-        toneSlider.dispatchEvent(new Event('input'));
-
-        bassSlider.value = p.bass;
-        bassSlider.dispatchEvent(new Event('input'));
+        buildLiveGraph(ctx, state.pausedAtTime);
+        startPlaybackLoop();
     }
 
-    // --- SUFFIX TAGS FOR RENAMING ---
-    suffixBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const suffix = btn.dataset.suffix;
-            outputNameInput.value = `${rawFileName}${suffix}`;
-        });
-    });
+    function pausePlayback() {
+        if (!state.isPlaying) return;
+        state.pausedAtTime = getCurrentPlaybackPosition();
+        tearDownLiveGraph();
+        state.isPlaying = false;
+        updatePlayPauseIcons(false);
+    }
 
-    // --- VISUALIZER DRAWING ---
+    function stopPlayback() {
+        tearDownLiveGraph();
+        state.isPlaying = false;
+        state.pausedAtTime = 0;
+        updatePlayPauseIcons(false);
+        updateProgressBar(0);
+        el.currentTimeDisplay.textContent = '0:00';
+    }
+
+    function seekToRatio(ratio) {
+        if (!state.originalAudioBuffer) return;
+        const targetTime = Math.max(0, Math.min(state.originalAudioBuffer.duration * ratio, state.originalAudioBuffer.duration));
+        state.pausedAtTime = targetTime;
+
+        if (state.isPlaying) {
+            const ctx = getAudioContext();
+            buildLiveGraph(ctx, targetTime);
+        } else {
+            updateProgressBar(ratio);
+            el.currentTimeDisplay.textContent = formatTime(targetTime / state.speed);
+        }
+    }
+
+    function updatePlayPauseIcons(isPlaying) {
+        if (isPlaying) {
+            el.playIcon.classList.add('hidden');
+            el.pauseIcon.classList.remove('hidden');
+        } else {
+            el.playIcon.classList.remove('hidden');
+            el.pauseIcon.classList.add('hidden');
+        }
+    }
+
+    function updateTotalDurationDisplay() {
+        const totalEffective = getEffectiveDuration();
+        el.totalTimeDisplay.textContent = formatTime(totalEffective);
+    }
+
+    function updateProgressBar(ratio) {
+        const pct = Math.max(0, Math.min(ratio * 100, 100));
+        el.progressFill.style.width = `${pct}%`;
+        el.progressBar.setAttribute('aria-valuenow', Math.round(pct));
+    }
+
+    function startPlaybackLoop() {
+        cancelAnimationFrame(state.rafId);
+
+        const loop = () => {
+            if (state.isPlaying && state.originalAudioBuffer) {
+                const currentPos = getCurrentPlaybackPosition();
+                const ratio = currentPos / state.originalAudioBuffer.duration;
+                updateProgressBar(ratio);
+                el.currentTimeDisplay.textContent = formatTime(currentPos / state.speed);
+            }
+            drawVisualizer();
+            state.rafId = requestAnimationFrame(loop);
+        };
+        state.rafId = requestAnimationFrame(loop);
+    }
+
+    // -------------------------------------------------------------------------
+    // Audio Spectrum & Waveform Visualizer
+    // -------------------------------------------------------------------------
     function resizeCanvas() {
-        visualizerCanvas.width = visualizerCanvas.parentElement.clientWidth;
-        visualizerCanvas.height = visualizerCanvas.parentElement.clientHeight;
+        const rect = el.visualizerCanvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        el.visualizerCanvas.width = rect.width * dpr;
+        el.visualizerCanvas.height = rect.height * dpr;
+        canvasCtx.scale(dpr, dpr);
     }
-    window.addEventListener('resize', resizeCanvas);
 
-    function clearCanvas() {
-        canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
-    }
+    window.addEventListener('resize', () => {
+        resizeCanvas();
+    });
 
     function drawVisualizer() {
-        if (!isPlaying || !analyserNode) return;
-        animationFrameId = requestAnimationFrame(drawVisualizer);
-        updateTimeDisplay();
+        const rect = el.visualizerCanvas.getBoundingClientRect();
+        const width = rect.width;
+        const height = rect.height;
 
-        const width = visualizerCanvas.width;
-        const height = visualizerCanvas.height;
-        const mode = visModeSelect.value;
+        canvasCtx.clearRect(0, 0, width, height);
 
-        canvasCtx.fillStyle = 'rgba(8, 14, 28, 0.3)';
-        canvasCtx.fillRect(0, 0, width, height);
+        if (!state.analyserNode || !state.isPlaying) {
+            // Idle ambient line
+            canvasCtx.beginPath();
+            canvasCtx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+            canvasCtx.lineWidth = 2;
+            canvasCtx.moveTo(0, height / 2);
+            canvasCtx.lineTo(width, height / 2);
+            canvasCtx.stroke();
+            return;
+        }
+
+        const mode = el.visModeSelect.value;
+        const bufferLength = state.analyserNode.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
 
         if (mode === 'bars') {
-            const bufferLength = analyserNode.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
-            analyserNode.getByteFrequencyData(dataArray);
+            state.analyserNode.getByteFrequencyData(dataArray);
+            const barCount = 48;
+            const barWidth = (width / barCount) - 2;
+            const step = Math.floor(bufferLength / barCount);
 
-            const barWidth = (width / bufferLength) * 2.2;
-            let x = 0;
-            for (let i = 0; i < bufferLength; i++) {
-                const barHeight = (dataArray[i] / 255) * height;
-                const gradient = canvasCtx.createLinearGradient(0, height, 0, height - barHeight);
-                gradient.addColorStop(0, '#38bdf8');
-                gradient.addColorStop(0.5, '#f472b6');
-                gradient.addColorStop(1, '#a855f7');
+            for (let i = 0; i < barCount; i++) {
+                const val = dataArray[i * step] / 255;
+                const barHeight = Math.max(3, val * (height - 12));
+                const x = i * (barWidth + 2);
+                const y = height - barHeight;
+
+                const gradient = canvasCtx.createLinearGradient(0, y, 0, height);
+                gradient.addColorStop(0, '#f472b6');
+                gradient.addColorStop(0.5, '#a855f7');
+                gradient.addColorStop(1, '#38bdf8');
 
                 canvasCtx.fillStyle = gradient;
-                canvasCtx.fillRect(x, height - barHeight, barWidth - 1, barHeight);
-                x += barWidth;
+                canvasCtx.fillRect(x, y, barWidth, barHeight);
             }
         } else if (mode === 'wave') {
-            const bufferLength = analyserNode.fftSize;
-            const dataArray = new Uint8Array(bufferLength);
-            analyserNode.getByteTimeDomainData(dataArray);
-
-            canvasCtx.lineWidth = 2;
+            state.analyserNode.getByteTimeDomainData(dataArray);
+            canvasCtx.lineWidth = 2.5;
             canvasCtx.strokeStyle = '#38bdf8';
             canvasCtx.beginPath();
 
             const sliceWidth = width / bufferLength;
             let x = 0;
+
             for (let i = 0; i < bufferLength; i++) {
                 const v = dataArray[i] / 128.0;
                 const y = (v * height) / 2;
-                if (i === 0) canvasCtx.moveTo(x, y);
-                else canvasCtx.lineTo(x, y);
+
+                if (i === 0) {
+                    canvasCtx.moveTo(x, y);
+                } else {
+                    canvasCtx.lineTo(x, y);
+                }
                 x += sliceWidth;
             }
             canvasCtx.lineTo(width, height / 2);
             canvasCtx.stroke();
         } else if (mode === 'circle') {
-            const bufferLength = analyserNode.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
-            analyserNode.getByteFrequencyData(dataArray);
-
+            state.analyserNode.getByteFrequencyData(dataArray);
             const centerX = width / 2;
             const centerY = height / 2;
-            const radius = Math.min(centerX, centerY) - 20;
+            const baseRadius = Math.min(width, height) * 0.22;
+            const count = 36;
+            const angleStep = (Math.PI * 2) / count;
+            const step = Math.floor(bufferLength / count);
 
             canvasCtx.beginPath();
-            canvasCtx.strokeStyle = '#f472b6';
-            canvasCtx.lineWidth = 2;
-            for (let i = 0; i < bufferLength; i++) {
-                const angle = (i / bufferLength) * Math.PI * 2;
-                const offset = (dataArray[i] / 255) * 25;
-                const r = radius + offset;
+            for (let i = 0; i <= count; i++) {
+                const idx = (i % count) * step;
+                const amp = (dataArray[idx] / 255) * 24;
+                const r = baseRadius + amp;
+                const angle = i * angleStep;
                 const x = centerX + Math.cos(angle) * r;
                 const y = centerY + Math.sin(angle) * r;
-                if (i === 0) canvasCtx.moveTo(x, y);
-                else canvasCtx.lineTo(x, y);
+
+                if (i === 0) {
+                    canvasCtx.moveTo(x, y);
+                } else {
+                    canvasCtx.lineTo(x, y);
+                }
             }
             canvasCtx.closePath();
+            canvasCtx.strokeStyle = '#f472b6';
+            canvasCtx.lineWidth = 2;
             canvasCtx.stroke();
         }
     }
 
-    // --- OFFLINE AUDIO EXPORT (WAV) ---
-    btnConvert.addEventListener('click', async () => {
-        if (!audioBuffer) return;
-        stopAudio();
+    // -------------------------------------------------------------------------
+    // UI Sliders & Controls Binding
+    // -------------------------------------------------------------------------
+    function updatePitchDisplay() {
+        const semitones = 12 * Math.log2(state.speed);
+        const sign = semitones >= 0 ? '+' : '';
+        el.pitchSemitones.textContent = `(${sign}${semitones.toFixed(1)} st)`;
+    }
 
-        btnConvert.disabled = true;
-        convertProgressBar.classList.remove('hidden');
-        exportReadyCard.classList.add('hidden');
-        convertProgressFill.style.width = '10%';
-        convertStatusText.textContent = 'Setting up DSP rendering pipeline...';
+    function setSpeed(newSpeed) {
+        state.speed = parseFloat(newSpeed.toFixed(2));
+        el.speedSlider.value = state.speed;
+        el.speedVal.textContent = `${Math.round(state.speed * 100)}%`;
+        updatePitchDisplay();
+        updateTotalDurationDisplay();
+        updateLiveParams();
+        clearActivePresetHighlight();
+    }
 
-        const speed = parseFloat(speedSlider.value);
-        const decay = parseFloat(reverbDecaySlider.value);
-        const predelay = parseFloat(reverbPreDelaySlider.value) / 1000;
-        const toneFreq = parseFloat(toneSlider.value);
-        const bassGain = parseFloat(bassSlider.value);
-        const mix = parseFloat(reverbMixSlider.value);
+    function initControls() {
+        // Speed Slider
+        el.speedSlider.addEventListener('input', (e) => {
+            setSpeed(parseFloat(e.target.value));
+        });
 
-        const outputDuration = (audioBuffer.duration / speed) + decay + predelay;
-        const sampleRate = audioBuffer.sampleRate;
-        const offlineCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(2, Math.ceil(outputDuration * sampleRate), sampleRate);
+        el.btnSpeedDown.addEventListener('click', () => {
+            const val = Math.max(parseFloat(el.speedSlider.min), state.speed - 0.01);
+            setSpeed(val);
+        });
+        el.btnSpeedReset.addEventListener('click', () => {
+            setSpeed(0.85);
+        });
+        el.btnSpeedUp.addEventListener('click', () => {
+            const val = Math.min(parseFloat(el.speedSlider.max), state.speed + 0.01);
+            setSpeed(val);
+        });
 
-        // Buffer source
-        const offlineSource = offlineCtx.createBufferSource();
-        offlineSource.buffer = audioBuffer;
-        offlineSource.playbackRate.value = speed;
+        // Reverb Mix
+        el.reverbMixSlider.addEventListener('input', (e) => {
+            state.reverbMix = parseFloat(e.target.value);
+            el.reverbMixVal.textContent = `${Math.round(state.reverbMix * 100)}%`;
+            updateLiveParams();
+            clearActivePresetHighlight();
+        });
 
-        // Bass filter
-        const offlineBass = offlineCtx.createBiquadFilter();
-        offlineBass.type = 'lowshelf';
-        offlineBass.frequency.value = 120;
-        offlineBass.gain.value = bassGain;
+        // Reverb Decay
+        el.reverbDecaySlider.addEventListener('input', (e) => {
+            state.reverbDecay = parseFloat(e.target.value);
+            el.reverbDecayVal.textContent = `${state.reverbDecay.toFixed(1)}s`;
+            state.impulseBuffer = null;
+            updateLiveParams();
+            clearActivePresetHighlight();
+        });
 
-        // Tone filter
-        const offlineTone = offlineCtx.createBiquadFilter();
-        offlineTone.type = 'lowpass';
-        offlineTone.frequency.value = toneFreq;
+        // Reverb Pre-Delay
+        el.reverbPreDelaySlider.addEventListener('input', (e) => {
+            state.reverbPreDelay = parseInt(e.target.value, 10);
+            el.reverbPreDelayVal.textContent = `${state.reverbPreDelay}ms`;
+            updateLiveParams();
+            clearActivePresetHighlight();
+        });
 
-        // Reverb & Delay
-        const offlineDelay = offlineCtx.createDelay();
-        offlineDelay.delayTime.value = predelay;
+        // Tone Filter
+        el.toneSlider.addEventListener('input', (e) => {
+            state.tone = parseInt(e.target.value, 10);
+            const desc = state.tone >= 16000 ? 'Bright' : state.tone >= 9000 ? 'Warm' : 'Muffled';
+            el.toneVal.textContent = `${desc} (${state.tone}Hz)`;
+            updateLiveParams();
+            clearActivePresetHighlight();
+        });
 
-        const offlineConvolver = offlineCtx.createConvolver();
-        offlineConvolver.buffer = createReverbImpulseResponse(offlineCtx, decay, predelay);
+        // Bass Boost
+        el.bassSlider.addEventListener('input', (e) => {
+            state.bass = parseFloat(e.target.value);
+            el.bassVal.textContent = `+${state.bass.toFixed(1)} dB`;
+            updateLiveParams();
+            clearActivePresetHighlight();
+        });
 
-        const offlineDry = offlineCtx.createGain();
-        const offlineWet = offlineCtx.createGain();
-        offlineDry.gain.value = Math.cos(mix * 0.5 * Math.PI);
-        offlineWet.gain.value = Math.sin(mix * 0.5 * Math.PI);
+        // Transport Buttons
+        el.btnPlayPause.addEventListener('click', togglePlayPause);
+        el.btnStop.addEventListener('click', stopPlayback);
 
-        // Connect offline chain
-        offlineSource.connect(offlineBass);
-        offlineBass.connect(offlineTone);
+        // Interactive Progress Bar
+        el.progressBar.addEventListener('click', (e) => {
+            const rect = el.progressBar.getBoundingClientRect();
+            const ratio = (e.clientX - rect.left) / rect.width;
+            seekToRatio(ratio);
+        });
 
-        offlineTone.connect(offlineDry);
-        offlineDry.connect(offlineCtx.destination);
+        // Presets
+        el.presetCards.forEach((card) => {
+            card.addEventListener('click', () => {
+                const presetKey = card.getAttribute('data-preset');
+                applyPreset(presetKey);
+            });
+        });
 
-        offlineTone.connect(offlineDelay);
-        offlineDelay.connect(offlineConvolver);
-        offlineConvolver.connect(offlineWet);
-        offlineWet.connect(offlineCtx.destination);
+        // Suffix rename buttons
+        el.suffixButtons.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const suffix = btn.getAttribute('data-suffix');
+                el.outputNameInput.value = `${state.originalFileBaseName}${suffix}`;
+            });
+        });
+    }
 
-        offlineSource.start(0);
-        convertProgressFill.style.width = '40%';
-        convertStatusText.textContent = 'Rendering audio DSP effects...';
+    function applyPreset(key) {
+        const p = PRESETS[key];
+        if (!p) return;
+
+        el.presetCards.forEach(c => c.classList.toggle('active', c.getAttribute('data-preset') === key));
+
+        state.speed = p.speed;
+        state.reverbMix = p.reverbMix;
+        state.reverbDecay = p.reverbDecay;
+        state.reverbPreDelay = p.reverbPreDelay;
+        state.tone = p.tone;
+        state.bass = p.bass;
+        state.impulseBuffer = null;
+
+        // Update UI controls
+        el.speedSlider.value = p.speed;
+        el.speedVal.textContent = `${Math.round(p.speed * 100)}%`;
+        updatePitchDisplay();
+        updateTotalDurationDisplay();
+
+        el.reverbMixSlider.value = p.reverbMix;
+        el.reverbMixVal.textContent = `${Math.round(p.reverbMix * 100)}%`;
+
+        el.reverbDecaySlider.value = p.reverbDecay;
+        el.reverbDecayVal.textContent = `${p.reverbDecay.toFixed(1)}s`;
+
+        el.reverbPreDelaySlider.value = p.reverbPreDelay;
+        el.reverbPreDelayVal.textContent = `${p.reverbPreDelay}ms`;
+
+        el.toneSlider.value = p.tone;
+        const desc = p.tone >= 16000 ? 'Bright' : p.tone >= 9000 ? 'Warm' : 'Muffled';
+        el.toneVal.textContent = `${desc} (${p.tone}Hz)`;
+
+        el.bassSlider.value = p.bass;
+        el.bassVal.textContent = `+${p.bass.toFixed(1)} dB`;
+
+        updateLiveParams();
+    }
+
+    function clearActivePresetHighlight() {
+        el.presetCards.forEach(c => c.classList.remove('active'));
+    }
+
+    // -------------------------------------------------------------------------
+    // Audio Conversion & Lossless WAV Export (Offline DSP Pipeline)
+    // -------------------------------------------------------------------------
+    function initConvertAndExport() {
+        el.btnConvert.addEventListener('click', startAudioConversion);
+
+        el.btnDownload.addEventListener('click', () => {
+            if (!state.convertedBlobUrl) return;
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = state.convertedBlobUrl;
+            const filename = (el.outputNameInput.value.trim() || 'slowed_and_reverb') + '.wav';
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+
+        el.btnPlayConverted.addEventListener('click', togglePlayConverted);
+    }
+
+    function resetExportState() {
+        if (state.convertedBlobUrl) {
+            URL.revokeObjectURL(state.convertedBlobUrl);
+            state.convertedBlobUrl = null;
+        }
+        if (state.convertedAudio) {
+            state.convertedAudio.pause();
+            state.convertedAudio = null;
+        }
+        state.isConvertedPlaying = false;
+        el.playConvertedIcon.textContent = '▶️';
+        el.playConvertedText.textContent = 'Play Converted Result';
+        el.exportReadyCard.classList.add('hidden');
+        el.convertProgressBar.classList.add('hidden');
+    }
+
+    async function startAudioConversion() {
+        if (!state.originalAudioBuffer) return;
+
+        pausePlayback();
+        resetExportState();
+
+        el.btnConvert.disabled = true;
+        el.convertProgressBar.classList.remove('hidden');
+        el.convertStatusText.textContent = 'Rendering Audio DSP graph...';
+        el.convertProgressFill.style.width = '15%';
 
         try {
-            convertedAudioBuffer = await offlineCtx.startRendering();
-            convertProgressFill.style.width = '85%';
-            convertStatusText.textContent = 'Encoding to 16-bit PCM WAV...';
+            const sampleRate = state.originalAudioBuffer.sampleRate;
+            const channels = 2;
+            const speed = state.speed;
+            const tailSeconds = state.reverbDecay + (state.reverbPreDelay / 1000) + 1.0;
+            const totalDuration = (state.originalAudioBuffer.duration / speed) + tailSeconds;
+            const totalLength = Math.ceil(totalDuration * sampleRate);
 
-            const wavBlob = audioBufferToWav(convertedAudioBuffer);
-            if (convertedAudioUrl) URL.revokeObjectURL(convertedAudioUrl);
-            convertedAudioUrl = URL.createObjectURL(wavBlob);
+            const OfflineAudioContextClass = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+            const offlineCtx = new OfflineAudioContextClass(channels, totalLength, sampleRate);
 
-            convertProgressFill.style.width = '100%';
-            convertStatusText.textContent = 'Export complete!';
-            
-            setTimeout(() => {
-                convertProgressBar.classList.add('hidden');
-                exportReadyCard.classList.remove('hidden');
-                btnConvert.disabled = false;
-                exportMetaInfo.textContent = `16-bit PCM WAV • ${(wavBlob.size / (1024 * 1024)).toFixed(2)} MB • ${formatTime(convertedAudioBuffer.duration)}`;
-            }, 400);
-        } catch (err) {
-            console.error('Rendering error:', err);
-            alert('Failed to process audio offline.');
-            btnConvert.disabled = false;
-            convertProgressBar.classList.add('hidden');
-        }
-    });
+            // Build Offline DSP Nodes
+            const source = offlineCtx.createBufferSource();
+            source.buffer = state.originalAudioBuffer;
+            source.playbackRate.value = speed;
 
-    // --- DOWNLOAD WAV ---
-    btnDownload.addEventListener('click', () => {
-        if (!convertedAudioUrl) return;
-        const a = document.createElement('a');
-        a.href = convertedAudioUrl;
-        let name = outputNameInput.value.trim() || 'slowed_reverb_track';
-        if (!name.toLowerCase().endsWith('.wav')) name += '.wav';
-        a.download = name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-    });
+            const bass = offlineCtx.createBiquadFilter();
+            bass.type = 'lowshelf';
+            bass.frequency.value = 120;
+            bass.gain.value = state.bass;
 
-    // --- PLAY CONVERTED RESULT ---
-    btnPlayConverted.addEventListener('click', () => {
-        if (!convertedAudioBuffer) return;
-        initAudioContext();
+            const tone = offlineCtx.createBiquadFilter();
+            tone.type = 'lowpass';
+            tone.frequency.value = state.tone;
+            tone.Q.value = 0.707;
 
-        if (isPlayingConverted) {
-            if (convertedSourceNode) {
-                try { convertedSourceNode.stop(); } catch(e){}
-            }
-            isPlayingConverted = false;
-            updatePlayConvertedUI();
-        } else {
-            stopAudio();
-            convertedSourceNode = audioCtx.createBufferSource();
-            convertedSourceNode.buffer = convertedAudioBuffer;
-            convertedSourceNode.connect(audioCtx.destination);
-            convertedSourceNode.start(0);
-            isPlayingConverted = true;
-            updatePlayConvertedUI();
-            convertedSourceNode.onended = () => {
-                isPlayingConverted = false;
-                updatePlayConvertedUI();
+            const preDelay = offlineCtx.createDelay(1.0);
+            preDelay.delayTime.value = state.reverbPreDelay / 1000;
+
+            const convolver = offlineCtx.createConvolver();
+            convolver.buffer = createReverbImpulse(offlineCtx, state.reverbDecay);
+
+            const dryGain = offlineCtx.createGain();
+            dryGain.gain.value = 1.0 - state.reverbMix * 0.45;
+
+            const wetGain = offlineCtx.createGain();
+            wetGain.gain.value = state.reverbMix;
+
+            // Routing
+            source.connect(bass);
+            bass.connect(tone);
+
+            tone.connect(dryGain);
+            dryGain.connect(offlineCtx.destination);
+
+            tone.connect(preDelay);
+            preDelay.connect(convolver);
+            convolver.connect(wetGain);
+            wetGain.connect(offlineCtx.destination);
+
+            source.start(0);
+
+            el.convertProgressFill.style.width = '45%';
+            el.convertStatusText.textContent = 'Rendering Convolver & High-Fidelity Filters...';
+
+            const renderedBuffer = await offlineCtx.startRendering();
+
+            el.convertProgressFill.style.width = '80%';
+            el.convertStatusText.textContent = 'Encoding to Lossless 16-bit WAV PCM...';
+
+            // Encode to WAV Blob
+            const wavBlob = audioBufferToWavBlob(renderedBuffer);
+            state.convertedBlobUrl = URL.createObjectURL(wavBlob);
+            state.convertedAudio = new Audio(state.convertedBlobUrl);
+            state.convertedAudio.onended = () => {
+                state.isConvertedPlaying = false;
+                el.playConvertedIcon.textContent = '▶️';
+                el.playConvertedText.textContent = 'Play Converted Result';
             };
-        }
-    });
 
-    function updatePlayConvertedUI() {
-        if (isPlayingConverted) {
-            playConvertedIcon.textContent = '⏸️';
-            playConvertedText.textContent = 'Pause Converted Result';
+            el.convertProgressFill.style.width = '100%';
+            el.convertStatusText.textContent = 'Export completed!';
+
+            // Display exported meta info
+            el.exportMetaInfo.textContent = `WAV • 16-bit Stereo PCM • ${formatTime(renderedBuffer.duration)} • ${formatFileSize(wavBlob.size)}`;
+            el.exportReadyCard.classList.remove('hidden');
+
+            setTimeout(() => {
+                el.convertProgressBar.classList.add('hidden');
+            }, 1000);
+        } catch (err) {
+            console.error('Audio conversion failed:', err);
+            alert('Failed to process and render audio: ' + err.message);
+            el.convertProgressBar.classList.add('hidden');
+        } finally {
+            el.btnConvert.disabled = false;
+        }
+    }
+
+    function togglePlayConverted() {
+        if (!state.convertedAudio) return;
+        if (state.isConvertedPlaying) {
+            state.convertedAudio.pause();
+            state.isConvertedPlaying = false;
+            el.playConvertedIcon.textContent = '▶️';
+            el.playConvertedText.textContent = 'Play Converted Result';
         } else {
-            playConvertedIcon.textContent = '▶️';
-            playConvertedText.textContent = 'Play Converted Result';
+            stopPlayback();
+            state.convertedAudio.play();
+            state.isConvertedPlaying = true;
+            el.playConvertedIcon.textContent = '⏸️';
+            el.playConvertedText.textContent = 'Pause Converted Result';
         }
     }
 
-    // --- HELPER UTILITIES ---
-    function formatTime(seconds) {
-        if (isNaN(seconds) || seconds < 0) return '0:00';
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-    }
-
-    // Encode AudioBuffer to WAV 16-bit PCM Blob
-    function audioBufferToWav(buffer) {
+    // -------------------------------------------------------------------------
+    // 16-bit Stereo PCM WAV Encoder
+    // -------------------------------------------------------------------------
+    function audioBufferToWavBlob(buffer) {
         const numChannels = buffer.numberOfChannels;
         const sampleRate = buffer.sampleRate;
         const format = 1; // PCM
         const bitDepth = 16;
-        
-        let result;
-        if (numChannels === 2) {
-            const left = buffer.getChannelData(0);
-            const right = buffer.getChannelData(1);
-            result = interleave(left, right);
-        } else {
-            result = buffer.getChannelData(0);
-        }
+        const bytesPerSample = bitDepth / 8;
+        const blockAlign = numChannels * bytesPerSample;
 
-        const dataLength = result.length * 2;
-        const bufferLength = 44 + dataLength;
-        const arrayBuffer = new ArrayBuffer(bufferLength);
+        const left = buffer.getChannelData(0);
+        const right = numChannels > 1 ? buffer.getChannelData(1) : left;
+        const sampleCount = buffer.length;
+        const dataByteCount = sampleCount * blockAlign;
+        const headerByteCount = 44;
+        const totalByteCount = headerByteCount + dataByteCount;
+
+        const arrayBuffer = new ArrayBuffer(totalByteCount);
         const view = new DataView(arrayBuffer);
 
+        // RIFF header chunk
         writeString(view, 0, 'RIFF');
-        view.setUint32(4, 36 + dataLength, true);
+        view.setUint32(4, 36 + dataByteCount, true);
         writeString(view, 8, 'WAVE');
+
+        // fmt sub-chunk
         writeString(view, 12, 'fmt ');
-        view.setUint32(16, 16, true);
-        view.setUint16(20, format, true);
+        view.setUint32(16, 16, true); // SubChunk1Size (16 for PCM)
+        view.setUint16(20, format, true); // AudioFormat
         view.setUint16(22, numChannels, true);
         view.setUint32(24, sampleRate, true);
-        view.setUint32(28, sampleRate * numChannels * (bitDepth / 8), true);
-        view.setUint16(32, numChannels * (bitDepth / 8), true);
+        view.setUint32(28, sampleRate * blockAlign, true); // ByteRate
+        view.setUint16(32, blockAlign, true);
         view.setUint16(34, bitDepth, true);
+
+        // data sub-chunk
         writeString(view, 36, 'data');
-        view.setUint32(40, dataLength, true);
+        view.setUint32(40, dataByteCount, true);
 
+        // Write interleaved PCM samples with clipping prevention
         let offset = 44;
-        for (let i = 0; i < result.length; i++, offset += 2) {
-            const s = Math.max(-1, Math.min(1, result[i]));
-            view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        for (let i = 0; i < sampleCount; i++) {
+            let sampleL = left[i];
+            sampleL = Math.max(-1, Math.min(1, sampleL));
+            view.setInt16(offset, sampleL < 0 ? sampleL * 0x8000 : sampleL * 0x7FFF, true);
+            offset += 2;
+
+            let sampleR = right[i];
+            sampleR = Math.max(-1, Math.min(1, sampleR));
+            view.setInt16(offset, sampleR < 0 ? sampleR * 0x8000 : sampleR * 0x7FFF, true);
+            offset += 2;
         }
 
-        return new Blob([arrayBuffer], { type: 'audio/wav' });
+        return new Blob([view], { type: 'audio/wav' });
     }
 
-    function interleave(leftChannel, rightChannel) {
-        const length = leftChannel.length + rightChannel.length;
-        const result = new Float32Array(length);
-        let inputIndex = 0;
-        for (let index = 0; index < length; ) {
-            result[index++] = leftChannel[inputIndex];
-            result[index++] = rightChannel[inputIndex];
-            inputIndex++;
+    function writeString(view, offset, str) {
+        for (let i = 0; i < str.length; i++) {
+            view.setUint8(offset + i, str.charCodeAt(i));
         }
-        return result;
     }
 
-    function writeString(view, offset, string) {
-        for (let i = 0; i < string.length; i++) {
-            view.setUint8(offset + i, string.charCodeAt(i));
-        }
-    }
-});
+    // -------------------------------------------------------------------------
+    // Initialize on DOM Ready
+    // -------------------------------------------------------------------------
+    document.addEventListener('DOMContentLoaded', () => {
+        initTheme();
+        initFileUpload();
+        initControls();
+        initConvertAndExport();
+        resizeCanvas();
+        updatePitchDisplay();
+        startPlaybackLoop();
+    });
+})();
